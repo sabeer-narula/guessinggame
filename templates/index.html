@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trivia Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- <link rel="stylesheet" href="../static/styles.css">  -->
+</head>
+<body>
+    <h1>{{ question.text }}</h1>
+    <p>Streak: <span id="streak">{{ current_streak }}</span></p>
+    <p id="timer">Time left: 5</p>
+    <p>Score: <span id="score">0</span></p>
+
+    <button onclick="checkAnswer('{{ question.options[0] }}')"> {{ question.options[0] }} </button>
+    <button onclick="checkAnswer('{{ question.options[1] }}')"> {{ question.options[1] }} </button>
+    <div id="result"></div>
+    <div id="data"></div>
+
+    <script>
+        let answerChecked = false; // Initialize this variable
+        let streak = 0;
+        let timer;
+        let timeLeft = 5;
+
+        function startTimer() {
+            timeLeft *= 100;  // Convert to 100th of a second
+            timer = setInterval(() => {
+                document.getElementById('timer').innerText = `Time left: ${(timeLeft / 100).toFixed(2)}`;
+                timeLeft -= 1;  // Decrease by 1/100th of a second
+                if (timeLeft <= 0.01) {
+                    timeLeft = 0;
+                    clearInterval(timer);
+                    streak = 0;
+                    document.getElementById('streak').innerText = `Streak: ${streak}`;
+                    document.getElementById('result').innerText = 'Time is up!';
+                    setTimeout(() => location.reload(), 2000);
+                    document.getElementById('timer').innerText = `Time left: 0.00`;
+
+                    fetch('/reset_streak', {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === "success") {
+                            document.getElementById('streak').innerText = 'Streak: 0';  // Set streak to 0 on the frontend
+                        }
+                    });
+                
+                    setTimeout(() => location.reload(), 2000); 
+                }}, 10);
+        }
+        
+
+        function stopTimer() {
+            clearInterval(timer);
+        }
+
+        let score = (localStorage.getItem('newGame') === 'true' || !localStorage.getItem('score')) ? 0 : parseInt(localStorage.getItem('score'));
+        localStorage.setItem('newGame', 'false');  // Reset newGame flag
+        
+        document.getElementById('score').innerText = score;
+        
+        function calculateScore(timeLeft) {
+            let actualTimeLeft = timeLeft / 100;  // Revert to original time scale
+            if (actualTimeLeft >= 4.5) {
+                return 5000;
+            } else if (actualTimeLeft >= 4) {
+                return 4000 + (actualTimeLeft - 4) * 1000;
+            } else if (actualTimeLeft >= 1) {
+                return 1000 + (actualTimeLeft - 1) * 1000;
+            } else if (actualTimeLeft > 0) {
+                return 1000;
+            }
+            return 0;
+        }
+        
+
+        function checkAnswer(answer) {
+            stopTimer();
+            if (answerChecked) return;
+            answerChecked = true;
+        
+            fetch('/check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'answer': answer,
+                    'question': '{{ question.text }}',
+                    'score': score
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let scoreDelta = 0;
+                document.getElementById('result').innerText = data.correct ? 'Correct!' : 'Wrong!';
+                document.getElementById('data').innerText = `Data: ${data.data[answer]} vs ${data.data[answer === '{{ question.options[0] }}' ? '{{ question.options[1] }}' : '{{ question.options[0] }}']}`;
+                if (data.correct) {
+                    scoreDelta = calculateScore(timeLeft);  // Calculate score increment
+                    // Update the display to show the score increment first
+                    document.getElementById('score').innerText = `${score} + ${scoreDelta}`;
+                    score += scoreDelta;  // Update total score
+                    localStorage.setItem('score', score);  // Store the score in local storage
+                    setTimeout(() => {
+                        // Update the display to show the new total score
+                        document.getElementById('score').innerText = `${score}`;
+                    }, 2000);  // Wait for 2 seconds before updating the display
+                } else {
+                    // Handle the wrong answer case as you normally would
+                    document.getElementById('score').innerText = `${score}`;
+                }
+                
+        
+                streak = data.streak;
+                setTimeout(() => location.reload(), 2000);
+            });
+        }
+
+        startTimer(); // Call this function here, after it's been defined
+    </script>
+</body>

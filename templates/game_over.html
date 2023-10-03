@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Over</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Game Over!</h1>
+    <h2>Your final streak: {{ streak }}</h2>
+    <h2>Your final score: {{ score }}</h2>
+    <button onclick="resetGame()">Restart Game</button>
+
+    <script>
+        function resetGame() {
+            localStorage.setItem('score', '0');  // Reset the score to 0
+            fetch('/reset', {method: 'POST'})
+            .then(() => location.href = '/');
+        }
+    </script>
+</body>
+</html>
