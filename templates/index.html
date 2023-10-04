@@ -7,6 +7,7 @@
     <!-- <link rel="stylesheet" href="../static/styles.css">  -->
 </head>
 <body>
+    <a href="login.html">Go to Login Page</a>
     <h1>{{ question.text }}</h1>
     <p>Streak: <span id="streak">{{ current_streak }}</span></p>
     <p id="timer">Time left: 5</p>
@@ -23,7 +24,7 @@
         let timer;
         let timeLeft = 5;
 
-        function startTimer() {
+        function startTimerA() {
             timeLeft *= 100;  // Convert to 100th of a second
             timer = setInterval(() => {
                 document.getElementById('timer').innerText = `Time left: ${(timeLeft / 100).toFixed(2)}`;
@@ -50,6 +51,47 @@
                     setTimeout(() => location.reload(), 2000); 
                 }}, 10);
         }
+
+        let timeRemaining = 5000; // Initialize to 5 seconds in milliseconds
+
+        function startTimer() {
+            const startTime = new Date().getTime();
+            const duration = timeLeft * 1000;  // duration in milliseconds
+        
+            timer = setInterval(() => {
+                const currentTime = new Date().getTime();
+                const timeElapsed = currentTime - startTime;
+                timeRemaining = duration - timeElapsed; // Update the global variable
+        
+                if (timeRemaining <= 0) {
+                    // Timer has reached 0
+                    clearInterval(timer);
+        
+                    // Reset the streak to 0
+                    streak = 0;
+                    document.getElementById('streak').innerText = `Streak: ${streak}`;
+                    document.getElementById('result').innerText = 'Time is up!';
+                    document.getElementById('timer').innerText = `Time left: 0.00`;
+        
+                    // Fetch the /reset_streak endpoint
+                    fetch('/reset_streak', {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === "success") {
+                            document.getElementById('streak').innerText = 'Streak: 0';  // Set streak to 0 on the frontend
+                        }
+                    });
+        
+                    // Reload the page after 2 seconds
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    document.getElementById('timer').innerText = `Time left: ${(timeRemaining / 1000).toFixed(2)}`;
+                }
+            }, 10);
+        }
+        
         
 
         function stopTimer() {
@@ -62,11 +104,11 @@
         document.getElementById('score').innerText = score;
         
         function calculateScore(timeLeft) {
-            let actualTimeLeft = timeLeft / 100;  // Revert to original time scale
-            if (actualTimeLeft >= 4.5) {
+            console.log(timeLeft);
+            let actualTimeLeft = timeLeft;  // Revert to original time scale
+            console.log(actualTimeLeft);
+            if (actualTimeLeft >= 4) {
                 return 5000;
-            } else if (actualTimeLeft >= 4) {
-                return 4000 + (actualTimeLeft - 4) * 1000;
             } else if (actualTimeLeft >= 1) {
                 return 1000 + (actualTimeLeft - 1) * 1000;
             } else if (actualTimeLeft > 0) {
@@ -81,6 +123,9 @@
             if (answerChecked) return;
             answerChecked = true;
         
+            let scoreDelta = calculateScore(timeRemaining / 1000);  // Note the change here
+            const newScore = score + scoreDelta;  // Calculate the new score
+        
             fetch('/check', {
                 method: 'POST',
                 headers: {
@@ -89,34 +134,34 @@
                 body: JSON.stringify({
                     'answer': answer,
                     'question': '{{ question.text }}',
-                    'score': score
+                    'score': newScore  // Send the updated score to the server
                 })
             })
             .then(response => response.json())
             .then(data => {
-                let scoreDelta = 0;
                 document.getElementById('result').innerText = data.correct ? 'Correct!' : 'Wrong!';
                 document.getElementById('data').innerText = `Data: ${data.data[answer]} vs ${data.data[answer === '{{ question.options[0] }}' ? '{{ question.options[1] }}' : '{{ question.options[0] }}']}`;
+                
                 if (data.correct) {
-                    scoreDelta = calculateScore(timeLeft);  // Calculate score increment
                     // Update the display to show the score increment first
                     document.getElementById('score').innerText = `${score} + ${scoreDelta}`;
-                    score += scoreDelta;  // Update total score
-                    localStorage.setItem('score', score);  // Store the score in local storage
                     setTimeout(() => {
                         // Update the display to show the new total score
-                        document.getElementById('score').innerText = `${score}`;
+                        document.getElementById('score').innerText = `${newScore}`;
                     }, 2000);  // Wait for 2 seconds before updating the display
                 } else {
                     // Handle the wrong answer case as you normally would
                     document.getElementById('score').innerText = `${score}`;
                 }
-                
         
                 streak = data.streak;
+                score = newScore;  // Update the local score variable
+                localStorage.setItem('score', newScore);  // Store the updated score in local storage
                 setTimeout(() => location.reload(), 2000);
             });
         }
+        
+        
 
         startTimer(); // Call this function here, after it's been defined
     </script>

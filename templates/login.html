@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <input type="text" id="username" placeholder="Enter Username">
+    <button onclick="register()">Register</button>
+    <button onclick="login()">Login</button>
+    <div id="profile">
+        <p>Username: <span id="profile-username"></span></p>
+        <p>Score: <span id="profile-score"></span></p>
+    </div>
+    
+
+    <script>
+        function getProfile() {
+            fetch('/profile')
+            .then(response => response.json())
+            .then(data => {
+                if(data.username) {
+                    document.getElementById('profile-username').innerText = data.username;
+                    document.getElementById('profile-score').innerText = data.score;
+                }
+            });
+        }
+        
+        // Call this when the page loads
+        getProfile();
+
+        function updateScore(score_to_add) {
+            fetch('/update_score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ score_to_add: score_to_add })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    // Refresh the profile data to show the updated score
+                    getProfile();
+                }
+            });
+        }
+        
+        
+        function register() {
+            const username = document.getElementById('username').value;
+            fetch('/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: username })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    alert('Registered successfully');
+                }
+            });
+        }
+        
+        function login() {
+            const username = document.getElementById('username').value;
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: username })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    alert('Logged in successfully');
+                }
+            });
+        }
+        
+    </script>
+</body>
+</html>
